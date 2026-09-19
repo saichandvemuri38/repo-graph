@@ -108,6 +108,14 @@ def test_api_checkout_and_listing():
     assert handle({"path": "/products", "catalog": c}) == {"products": ["Lamp", "Desk"]}
 
 
+def test_api_orders_tracks_completed_orders():
+    import ecommerce.api as api
+    api.ORDERS.clear()
+    c = catalog()
+    handle({"path": "/checkout", "catalog": c, "body": {"items": [("A1", 1)], "method": "upi", "detail": "me@bank"}})
+    assert handle({"path": "/orders"}) == {"orders": [{"total": 158.0, "items": [{"sku": "A1", "qty": 1}]}]}
+
+
 def test_api_search():
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE products (sku TEXT, name TEXT, price REAL, stock INT)")
