@@ -95,7 +95,9 @@ Describe 'Core: config, schemas, risk, paths' {
         Get-RiskLevel -Affected 0 -Flows 0 | Should -Be 'LOW'
         Get-RiskLevel -Affected 4 -Flows 0 | Should -Be 'MEDIUM'
         Get-RiskLevel -Affected 11 -Flows 0 | Should -Be 'HIGH'
-        Get-RiskLevel -Affected 0 -Flows 4 | Should -Be 'CRITICAL'
+        Get-RiskLevel -Affected 0 -Flows 2 | Should -Be 'MEDIUM'
+        Get-RiskLevel -Affected 0 -Flows 4 | Should -Be 'HIGH'
+        Get-RiskLevel -Affected 0 -Flows 8 | Should -Be 'CRITICAL'
         Get-RiskLevel -Affected 31 -Flows 0 | Should -Be 'CRITICAL'
         Test-RiskAtLeast 'HIGH' 'MEDIUM' | Should -BeTrue
         Test-RiskAtLeast 'LOW' 'HIGH' | Should -BeFalse
@@ -400,6 +402,18 @@ Describe 'Install and the whole daily loop' -Skip:(-not $script:HaveGit) {
             finally { Set-Content $cfgPath $original }
             (Invoke-InRepo 'work.ps1' @('test', '-Command', 'python -m pytest -q', '-Result', 'pass')).ExitCode | Should -Be 0     # leave a passing run for the checks below
         }
+        It 'runs tests with the project virtual environment first on PATH' {
+            $cfgPath = Join-Path $script:Repo '.claude/config/tests.json'
+            $original = Get-Content -Raw $cfgPath
+            try {
+                [void](New-Item -ItemType Directory -Path (Join-Path $script:Repo '.venv/bin') -Force)
+                @{ schemaVersion = 1; runners = @(@{ name = 'envcheck'; languages = @('python'); detect = @('app'); command = 'Write-Output "PATH=$env:PATH"; Write-Output "VENV=$env:VIRTUAL_ENV"' }) } | ConvertTo-Json -Depth 5 | Set-Content $cfgPath
+                $out = (Invoke-InRepo 'run-tests.ps1').StdOut
+                $out | Should -Match 'PATH=.*\.venv[\\/]bin'
+                $out | Should -Match 'VENV=.*\.venv'
+            }
+            finally { Set-Content $cfgPath $original; Remove-Item (Join-Path $script:Repo '.venv') -Recurse -Force -ErrorAction SilentlyContinue }
+        }
         It 'finds test files in the repo root and prefers the Maven wrapper over plain Maven' {
             $cfgPath = Join-Path $script:Repo '.claude/config/tests.json'
             $original = Get-Content -Raw $cfgPath
@@ -535,6 +549,42 @@ Describe 'Install and the whole daily loop' -Skip:(-not $script:HaveGit) {
         }
     }
 
+    Context 'VS Code Copilot Chat' {
+        It 'adds the agent, the instructions and the MCP server without disturbing what is there' {
+            Write-File '.vscode/mcp.json' '{"servers":{"other":{"command":"x"}}}'
+            Write-File '.github/copilot-instructions.md' "# Our rules`n`nUse tabs.`n"
+            $r = Invoke-Pwsh -Script (Join-Path $script:Owner '.claude/scripts/install.ps1') -Arguments @('-Target', $script:Repo, '-SkipIndex', '-Copilot') -Cwd $script:Owner
+            $r.ExitCode | Should -Be 0
+            $agentFile = @('.claude/agents/copilot-agent.md', '.github/agents/atlas-dev.agent.md') | ForEach-Object { Join-Path $script:Repo $_ } | Where-Object { Test-Path $_ } | Select-Object -First 1
+            $agentFile | Should -Not -BeNullOrEmpty
+            $agent = Get-Content -Raw $agentFile
+            $agent | Should -Match '(?m)^name: atlas-dev'
+            $agent | Should -Match "tools: \['codeatlas/\*'"
+            $mcp = Read-Json (Join-Path $script:Repo '.vscode/mcp.json')
+            $mcp.servers.other.command | Should -Be 'x'
+            $mcp.servers.codeatlas.command | Should -Be 'pwsh'
+            @($mcp.servers.codeatlas.args) | Should -Contain '${workspaceFolder}/.claude/scripts/atlas.ps1'
+            $inst = Get-Content -Raw (Join-Path $script:Repo '.github/copilot-instructions.md')
+            $inst | Should -Match 'Use tabs'
+            $inst | Should -Match '<!-- codeatlas -->'
+        }
+        It 'is idempotent and never overwrites a file that is not plain JSON' {
+            Invoke-Pwsh -Script (Join-Path $script:Owner '.claude/scripts/install.ps1') -Arguments @('-Target', $script:Repo, '-SkipIndex', '-Copilot') -Cwd $script:Owner | Out-Null
+            ([regex]::Matches((Get-Content -Raw (Join-Path $script:Repo '.github/copilot-instructions.md')), '<!-- codeatlas -->')).Count | Should -Be 1
+            Set-Content (Join-Path $script:Repo '.vscode/mcp.json') "{`n  // my servers`n  `"servers`": {}`n}"
+            $r = Invoke-Pwsh -Script (Join-Path $script:Owner '.claude/scripts/install.ps1') -Arguments @('-Target', $script:Repo, '-SkipIndex', '-Copilot') -Cwd $script:Owner
+            $r.StdOut | Should -Match 'skipped .vscode/mcp.json'
+            (Get-Content -Raw (Join-Path $script:Repo '.vscode/mcp.json')) | Should -Match '// my servers'
+        }
+        It 'accepts edit hooks that name their fields the VS Code way' {
+            $json = @{ toolName = 'editFiles'; toolInput = @{ filePath = (Join-Path $script:Repo 'app/util.py') } } | ConvertTo-Json -Compress
+            (Invoke-InRepo 'pre-edit.ps1' -StdIn $json).ExitCode | Should -Be 0
+            (Invoke-InRepo 'on-edit.ps1' -StdIn $json).ExitCode | Should -Be 0
+            $gates = Read-Json (Join-Path $script:Repo '.claude/atlas/work/gates.json')
+            $gates.ContainsKey('app/util.py') | Should -BeTrue
+        }
+    }
+
     Context 'uninstall' {
         It 'removes what install added and leaves your own settings' {
             $r = Invoke-Pwsh -Script (Join-Path $script:Owner '.claude/scripts/install.ps1') -Arguments @('-Target', $script:Repo, '-Uninstall') -Cwd $script:Owner
@@ -545,6 +595,8 @@ Describe 'Install and the whole daily loop' -Skip:(-not $script:HaveGit) {
             Join-Path $script:Repo '.git/hooks/pre-push' | Should -Not -Exist
             (Get-Content -Raw (Join-Path $script:Repo '.git/hooks/post-merge')) | Should -Match 'my own hook'
             (Read-Json (Join-Path $script:Repo '.mcp.json')).mcpServers.ContainsKey('codeatlas') | Should -BeFalse
+            (Get-Content -Raw (Join-Path $script:Repo '.github/copilot-instructions.md')) | Should -Not -Match 'codeatlas'
+            (Get-Content -Raw (Join-Path $script:Repo '.github/copilot-instructions.md')) | Should -Match 'Use tabs'
         }
     }
 }

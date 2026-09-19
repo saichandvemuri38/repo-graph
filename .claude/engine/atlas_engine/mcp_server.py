@@ -94,8 +94,11 @@ def build_server(root: Path):
         return reports.md_context(a.context(sid))
 
     @tool()
-    def atlas_impact(target: str, direction: str = "upstream", depth: int = 3) -> str:
+    def atlas_impact(target: str = "", direction: str = "upstream", depth: int = 3, symbol: str = "") -> str:
         """Blast radius of changing a symbol or file. direction='upstream' = who depends on it (default), 'downstream' = what it depends on. Returns risk LOW/MEDIUM/HIGH/CRITICAL, dependants by depth, flows touched and suggested checks. Run before editing."""
+        target = target or symbol
+        if not target:
+            return "Give a symbol name (Class.method), a full id (path.py::name) or a file path as `target`."
         return reports.md_impact(fresh().impact(target, direction if direction in ("upstream", "downstream") else "upstream", max(1, min(depth, 3))))
 
     @tool()

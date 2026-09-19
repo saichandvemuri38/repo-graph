@@ -20,5 +20,7 @@ class Catalog:
 
 def search_products(conn, name):
     """Find products whose name contains `name`."""
-    query = "SELECT sku, name, price, stock FROM products WHERE name LIKE '%" + name + "%'"
-    return conn.execute(query).fetchall()
+    # Bind the pattern as a parameter; never splice user input into the SQL text.
+    # Bind the pattern as a parameter; never splice user input into the SQL text.
+    query = "SELECT sku, name, price, stock FROM products WHERE name LIKE ?"
+    return conn.execute(query, ("%" + name + "%",)).fetchall()

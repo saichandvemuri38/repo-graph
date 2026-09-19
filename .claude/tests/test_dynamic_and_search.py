@@ -210,3 +210,25 @@ def test_underscore_class_receivers_resolve(tmp_path):
     atlas = atlas_for(tmp_path, {"m.py": "class _Worker:\n    def run(self):\n        return 1\n\ndef go():\n    return _Worker().run()\n"})
     edges = {(r["src"].split("::")[-1], r["dst"].split("::")[-1]) for r in atlas.db.execute("SELECT src, dst FROM edges WHERE type='CALLS'")}
     assert ("go", "_Worker.run") in edges
+
+
+def test_calls_on_untyped_variables_are_leads_not_proof_of_dead_code(tmp_path):
+    atlas = atlas_for(tmp_path, {"shop.py": '''
+        class Order:
+            def total(self):
+                return 1
+
+            def cancel(self):
+                return 2
+
+        def make():
+            return Order()
+
+        def report(orders):
+            first = orders[0]
+            return first.total()
+    '''})
+    assert "untyped-call" in kinds(atlas, "Order.total")            # `first.total()`: the receiver's type is unknown
+    assert "untyped-call" not in kinds(atlas, "Order.cancel")       # nothing calls .cancel() anywhere
+    found = {x["symbol"]["qname"]: x for x in atlas.unused()["possible"]}
+    assert "Order.total" in found and "Order.cancel" not in found

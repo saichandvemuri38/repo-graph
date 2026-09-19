@@ -60,6 +60,18 @@ In the report: force / tree / radial layouts, filters and depth focus, search wi
 
 It is a snapshot. Pushes and `work.ps1 finish` rebuild it; `web` rebuilds it when the graph moved on. Size: about 400 KB for a 24-file repo, about 15 MB for 3,500 files and 20,000 symbols (built in 5 s; opens in 1.5 s). Needs a current browser (Chrome/Edge 80+, Firefox 113+, Safari 16.4+).
 
+## Using it from VS Code (no Claude CLI needed)
+
+**Claude Code extension.** It uses the same settings as the CLI. Install with `-DefaultAgent` (or add `"agent": "atlas-dev"` to `.claude/settings.json`), open the folder in VS Code and start a Claude Code session: it starts as atlas-dev, with hooks, the edit gate and task tracking. Accept the trust prompt once so the project's permission list applies.
+
+**GitHub Copilot Chat.** Install with `-Copilot`:
+
+```powershell
+pwsh -NoProfile -File .claude/scripts/install.ps1 -Target C:\work\my-repo -Update -Copilot
+```
+
+The Copilot agent is written to `.github/agents/atlas-dev.agent.md` (pick **atlas-dev** in the Chat agent picker; if you keep it in `.claude/agents/copilot-agent.md` instead, the install uses that, since VS Code reads custom agents from there too). The install also writes `.github/copilot-instructions.md` (a short CodeAtlas block appended to yours) and `.vscode/mcp.json` (the `codeatlas` MCP server; VS Code asks you to trust it once, and you may need to enable its tools in the tools picker). In Copilot the agent does the bookkeeping itself (`work.ps1`, `precommit.ps1`, `run-tests.ps1`) by running terminal commands; the git hooks still refresh the graph and rebuild the report on every commit and push. To avoid a prompt for each script, allow terminal commands that start with `pwsh -NoProfile -File .claude/scripts/` in Copilot's terminal auto-approve setting (`chat.tools.terminal.autoApprove`). VS Code's hooks support is preview and ignores matchers, so the automatic edit gate and edit tracking are only guaranteed in Claude Code; the scripts accept both field spellings, but that path is untested.
+
 ## Commands and tools
 
 | You want to… | Claude Code | Terminal (`pwsh -NoProfile -File .claude/scripts/…`) |
@@ -112,7 +124,7 @@ From a repo that has this `.claude` folder:
 pwsh -NoProfile -File .claude/scripts/install.ps1 -Target C:\work\my-repo
 ```
 
-It copies the folders (engine included), merges `.claude/settings.json`, `.mcp.json` and `CLAUDE.md`, excludes generated files from git, installs the git hooks, and builds the first graph and report. It never overwrites a file you have unless you pass `-Update` (refresh the managed folders and engine) or `-Force` (also reset `config/`), merges your settings, and never replaces a git hook you already had. Other options: `-NoHooks`, `-NoMcp`, `-DefaultAgent` (plain `claude` starts atlas-dev), `-SetupPython` (create `.claude/engine/.venv`), `-SkipIndex`, `-Uninstall`. The repo then carries its own copy of the tool; teammates get it with a normal `git pull`, and each runs `setup-engine.ps1` once if they want the optional packages.
+It copies the folders (engine included), merges `.claude/settings.json`, `.mcp.json` and `CLAUDE.md`, excludes generated files from git, installs the git hooks, and builds the first graph and report. It never overwrites a file you have unless you pass `-Update` (refresh the managed folders and engine) or `-Force` (also reset `config/`), merges your settings, and never replaces a git hook you already had. Other options: `-NoHooks`, `-NoMcp`, `-DefaultAgent` (plain `claude`, and the VS Code Claude extension, start atlas-dev), `-Copilot` (VS Code Copilot Chat files), `-SetupPython` (create `.claude/engine/.venv`), `-SkipIndex`, `-Uninstall`. The repo then carries its own copy of the tool; teammates get it with a normal `git pull`, and each runs `setup-engine.ps1` once if they want the optional packages.
 
 ## Limits
 

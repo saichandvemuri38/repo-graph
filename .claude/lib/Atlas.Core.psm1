@@ -238,6 +238,18 @@ function Read-HookInput {
     @{}
 }
 
+function Get-HookFilePath {
+    <# The file an edit hook is about, whatever the host calls the fields (Claude Code: tool_input.file_path; VS Code hooks use camelCase). #>
+    param($Hook)
+    foreach ($outer in 'tool_input', 'toolInput', 'input') {
+        $inner = if ($Hook -is [System.Collections.IDictionary] -and $Hook.Contains($outer)) { $Hook[$outer] } else { $null }
+        if ($inner -is [System.Collections.IDictionary]) {
+            foreach ($key in 'file_path', 'filePath', 'path', 'file') { if ($inner.Contains($key) -and $inner[$key]) { return [string]$inner[$key] } }
+        }
+    }
+    $null
+}
+
 function Write-HookContext {
     <# Gives Claude extra context from a hook (PreToolUse / PostToolUse / SessionStart-style JSON). #>
     param([Parameter(Mandatory)][string]$EventName, [Parameter(Mandatory)][string]$Text)
@@ -273,4 +285,4 @@ function Test-RiskAtLeast {
 
 Export-ModuleMember -Function Get-FileLanguage, Get-AtlasRoot, Get-ClaudeDir, Get-WorkDir, ConvertTo-RepoPath, Test-TestPath, Merge-Hashtable, Read-JsonFile,
     Test-AtlasSchema, Write-JsonFile, Get-AtlasConfig, Get-AtlasPolicy, Reset-AtlasCache, Invoke-Process, Get-EnginePath, Get-EnginePython,
-    Invoke-Engine, Invoke-EngineJson, Update-Graph, Update-Report, Get-GraphStats, Read-HookInput, Write-HookContext, Write-AtlasLog, Get-RiskLevel, Test-RiskAtLeast
+    Invoke-Engine, Invoke-EngineJson, Update-Graph, Update-Report, Get-GraphStats, Read-HookInput, Get-HookFilePath, Write-HookContext, Write-AtlasLog, Get-RiskLevel, Test-RiskAtLeast

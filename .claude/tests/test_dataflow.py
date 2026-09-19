@@ -105,3 +105,14 @@ def test_files_that_do_not_parse_are_reported_not_analysed(tmp_path):
     _, r = analyse(tmp_path, {"bad.py": "def f(:\n    pass\n", "ok.py": "import os\nos.system(input())\n"})
     assert len(r["findings"]) == 1
     assert any(p == "bad.py" for p, _ in r["skipped"])
+
+
+def test_bare_route_decorator_marks_handler_parameters_as_request_data(tmp_path):
+    _, r = analyse(tmp_path, {"shop.py": (
+        "import sqlite3\n\nROUTES = {}\n\ndef route(path):\n    def register(fn):\n        ROUTES[path] = fn\n        return fn\n    return register\n\n"
+        "def find(conn, name):\n    return conn.execute(\"SELECT * FROM t WHERE n LIKE '%\" + name + \"%'\").fetchall()\n\n"
+        "@route('/search')\ndef search(request):\n    return find(request['db'], request['query']['q'])\n\n"
+        "def get(request):\n    return find(request['db'], request['q'])\n")})
+    got = {(f["kind"], f["function"].split("::")[-1], f["source_function"].split("::")[-1]) for f in r["findings"]}
+    assert ("sql", "find", "search") in got                       # @route('/search') makes `request` untrusted input
+    assert not any(f["source_function"].endswith("::get") for f in r["findings"])    # a bare function called `get` is not a route

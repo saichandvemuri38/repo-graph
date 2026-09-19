@@ -101,8 +101,10 @@ def calculate_std_dev(data: list) -> float:
     return variance ** 0.5
 
 
-def calculate_percentiles(data: list, percentiles: list = [25, 50, 75]) -> dict:
-    """Calculate percentile values"""
+def calculate_percentiles(data: list, percentiles: list | None = None) -> dict:
+    """Calculate percentile values (default: 25th, 50th and 75th)"""
+    if percentiles is None:
+        percentiles = [25, 50, 75]
     if not data:
         return {}
     sorted_data = sorted(data)

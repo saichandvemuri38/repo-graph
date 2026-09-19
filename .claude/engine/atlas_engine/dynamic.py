@@ -75,6 +75,9 @@ class Evidence:
         self.bases: dict[str, set] = {}
         for r in db.execute("SELECT src, target FROM raw_edges WHERE type='EXTENDS'"):
             self.bases.setdefault(r["src"], set()).add(r["target"].rsplit(".", 1)[-1])
+        self.untyped: dict[str, list] = {}          # method name -> call sites on a variable whose type is unknown (`order.total()`)
+        for r in db.execute("SELECT file, target, line FROM raw_edges WHERE type='CALLS' AND local=1 AND target LIKE '%.%'"):
+            self.untyped.setdefault(r["target"].rsplit(".", 1)[-1], []).append((r["file"], r["line"]))
         self.entries = {r["entry"]: r["name"] for r in db.execute("SELECT entry, name FROM processes")}
         self.lang = {r["path"]: r["lang"] for r in db.execute("SELECT path, lang FROM files")}
 
@@ -132,6 +135,9 @@ def dynamic_use(atlas, sym, evidence: "Evidence | None" = None) -> dict:
                 break
     if outside and not name.startswith("__") and kind == "method":
         add("weak", "external-base", f"the class extends `{outside[0]}` from outside this repo; that base class may call `{name}`")
+    if kind == "method":
+        for f, line in ev_index.untyped.get(name, [])[:3]:
+            add("weak", "untyped-call", f"`.{name}()` is called on a variable of unknown type at {f}:{line}, which may be this method")
     for f, line in ev_index.literal.get(name, [])[:MAX_EVIDENCE]:
         add("strong", "getattr", f"`getattr`/`hasattr`/`setattr` is called with the literal '{name}' at {f}:{line}")
     if len(name) >= 3:

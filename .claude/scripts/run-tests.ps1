@@ -38,10 +38,16 @@ try {
     }
 
     $shell = (Get-Process -Id $PID).Path
+    # Use the project's own virtual environment when it has one, so `python -m pytest` runs where pytest is installed.
+    $childEnv = @{}
+    foreach ($venv in '.venv', 'venv') {
+        $bin = @('bin', 'Scripts') | ForEach-Object { Join-Path (Join-Path $root $venv) $_ } | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if ($bin) { $childEnv = @{ PATH = "$bin$([IO.Path]::PathSeparator)$($env:PATH)"; VIRTUAL_ENV = (Join-Path $root $venv) }; break }
+    }
     $failed = 0
     foreach ($r in $chosen) {
         $started = Get-Date
-        $res = Invoke-Process -File $shell -Arguments @('-NoProfile', '-Command', $r.command) -WorkingDirectory $root -TimeoutSeconds $TimeoutSeconds
+        $res = Invoke-Process -File $shell -Arguments @('-NoProfile', '-Command', $r.command) -WorkingDirectory $root -Environment $childEnv -TimeoutSeconds $TimeoutSeconds
         $outcome = if ($res.ExitCode -eq 0) { 'pass' } else { 'fail'; $failed++ }
         $secs = [Math]::Round(((Get-Date) - $started).TotalSeconds, 1)
         Write-Output "== $($r.name): $($r.command) => $outcome ($secs s)"

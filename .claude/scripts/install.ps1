@@ -12,6 +12,7 @@
     -NoHooks       skip git hooks
     -NoMcp         skip .mcp.json
     -DefaultAgent  make atlas-dev the default agent for this repo (settings.json "agent"), so plain `claude` starts it
+    -Copilot       also set up VS Code GitHub Copilot Chat: .vscode/mcp.json and .github/copilot-instructions.md (the agent itself is .claude/agents/copilot-agent.md)
     -SetupPython   create the engine's virtual environment (.claude/engine/.venv) and install its packages (needs network)
     -SkipIndex     do not build the graph and report now
     -Uninstall     remove the hooks, settings entries and MCP entry this script added (folders are left in place)
@@ -19,7 +20,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Target,
-    [switch]$Update, [switch]$Force, [switch]$NoHooks, [switch]$NoMcp, [switch]$DefaultAgent, [switch]$SetupPython, [switch]$SkipIndex, [switch]$Uninstall
+    [switch]$Update, [switch]$Force, [switch]$NoHooks, [switch]$NoMcp, [switch]$DefaultAgent, [switch]$Copilot, [switch]$SetupPython, [switch]$SkipIndex, [switch]$Uninstall
 )
 $ErrorActionPreference = 'Stop'
 foreach ($m in 'Core') { Import-Module (Join-Path $PSScriptRoot "../lib/Atlas.$m.psm1") -DisableNameChecking }
@@ -74,6 +75,22 @@ if ($Uninstall) {
         $mcp.mcpServers.Remove('codeatlas')
         $mcp | ConvertTo-Json -Depth 10 | Set-Content -Path $mf -Encoding utf8
         Say 'removed the codeatlas MCP server from .mcp.json'
+    }
+    $vf = Join-Path $TargetRoot '.vscode/mcp.json'
+    $vs = if (Test-Path $vf) { try { Read-JsonFile $vf } catch { $null } } else { $null }
+    if ($vs -and $vs.servers -and $vs.servers.ContainsKey('codeatlas')) {
+        $vs.servers.Remove('codeatlas')
+        $vs | ConvertTo-Json -Depth 10 | Set-Content -Path $vf -Encoding utf8
+        Say 'removed the codeatlas server from .vscode/mcp.json'
+    }
+    $ag = Join-Path $TargetRoot '.github/agents/atlas-dev.agent.md'
+    if (Test-Path $ag) { Remove-Item $ag -Force; Say 'removed .github/agents/atlas-dev.agent.md' }
+    $ci = Join-Path $TargetRoot '.github/copilot-instructions.md'
+    if ((Test-Path $ci) -and (Select-String -Path $ci -SimpleMatch '<!-- codeatlas -->' -Quiet)) {
+        $t = Get-Content -Raw $ci
+        $t = [regex]::Replace($t, '(?s)\r?\n?<!-- codeatlas -->.*?<!-- /codeatlas -->\r?\n?', '')
+        if ($t.Trim()) { Set-Content -Path $ci -Value $t -Encoding utf8 } else { Remove-Item $ci -Force }
+        Say 'removed the CodeAtlas block from .github/copilot-instructions.md'
     }
     Say 'Done. The .claude folders and .claude/atlas/ were left in place; delete them by hand if you want them gone.'
     return
@@ -152,6 +169,44 @@ if (-not $NoMcp) {
     Say '.mcp.json: codeatlas MCP server (Claude Code asks once to approve it)'
 }
 
+# ---------------------------------------------------------------------------------------------- 5b. VS Code GitHub Copilot Chat (optional)
+if ($Copilot) {
+    $vf = Join-Path $TargetRoot '.vscode/mcp.json'
+    $vs = @{}
+    $parsed = $true
+    if (Test-Path $vf) {
+        $raw = Get-Content -Raw $vf
+        if ($raw -match '(?m)^\s*//' -or $raw -match '/\*') { $parsed = $false }        # comments would be lost when the file is rewritten
+        else { try { $vs = Read-JsonFile $vf } catch { $parsed = $false } }
+    }
+    if (-not $vs) { $vs = @{} }
+    if ($parsed) {
+        if (-not $vs.ContainsKey('servers')) { $vs.servers = @{} }
+        $vs.servers.codeatlas = @{ type = 'stdio'; command = 'pwsh'; args = @('-NoProfile', '-File', '${workspaceFolder}/.claude/scripts/atlas.ps1', 'serve'); cwd = '${workspaceFolder}' }
+        [void](New-Item -ItemType Directory -Path (Split-Path $vf -Parent) -Force)
+        $vs | ConvertTo-Json -Depth 10 | Set-Content -Path $vf -Encoding utf8
+        Say '.vscode/mcp.json: codeatlas MCP server for Copilot Chat (VS Code asks you to trust it once)'
+    }
+    else { Say 'skipped .vscode/mcp.json: it has comments or is not plain JSON. Add the codeatlas server by hand (see .claude/README.md, "VS Code")' }
+    # VS Code reads custom agents from .claude/agents too. If this repo keeps the Copilot agent there it was copied with the agents folder;
+    # otherwise it is written to .github/agents from the template.
+    if (Test-Path (Join-Path $TargetClaude 'agents/copilot-agent.md')) {
+        Say 'Copilot Chat agent: pick the agent from .claude/agents/copilot-agent.md in the Chat agent picker'
+    }
+    else {
+        $agentFile = Join-Path $TargetRoot '.github/agents/atlas-dev.agent.md'
+        if (-not (Test-Path $agentFile) -or $Update -or $Force) {
+            [void](New-Item -ItemType Directory -Path (Split-Path $agentFile -Parent) -Force)
+            Copy-Item (Join-Path $Source '.claude/templates/copilot-agent.md') $agentFile -Force
+        }
+        Say '.github/agents/atlas-dev.agent.md: pick "atlas-dev" in the Copilot Chat agent picker'
+    }
+    $ci = Join-Path $TargetRoot '.github/copilot-instructions.md'
+    $cblock = Get-Content -Raw -Path (Join-Path $Source '.claude/templates/copilot-instructions.md') -Encoding utf8
+    if (-not (Test-Path $ci)) { [void](New-Item -ItemType Directory -Path (Split-Path $ci -Parent) -Force); Set-Content -Path $ci -Value $cblock -Encoding utf8; Say 'wrote .github/copilot-instructions.md' }
+    elseif (-not (Select-String -Path $ci -SimpleMatch '<!-- codeatlas -->' -Quiet)) { Add-Content -Path $ci -Value "`n$cblock" -Encoding utf8; Say 'appended the CodeAtlas rules to .github/copilot-instructions.md' }
+}
+
 # ---------------------------------------------------------------------------------------------- 6. git: excludes and hooks
 if ($IsGit) {
     $exclude = Get-GitPath 'info/exclude'
@@ -216,7 +271,8 @@ if (Test-Path $doctor) {
 Write-Host @"
 
 Installed in $TargetRoot
-  Work with the daily agent:   cd $TargetRoot ; claude --agent atlas-dev
+  Work with the daily agent:   Claude Code: open the folder and start Claude (or run: claude --agent atlas-dev; -DefaultAgent makes it the default)
+                               Copilot Chat: install with -Copilot, then pick "atlas-dev-copilot" in the Chat agent picker
   See the graph (HTML report): pwsh -NoProfile -File .claude/scripts/atlas.ps1 web --open        (or open .claude/atlas/report/index.html)
   Health check any time:       pwsh -NoProfile -File .claude/scripts/doctor.ps1
 "@

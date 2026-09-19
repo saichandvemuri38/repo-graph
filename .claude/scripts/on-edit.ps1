@@ -7,7 +7,7 @@
 foreach ($m in 'Core', 'Git', 'Template', 'Session') { Import-Module (Join-Path $PSScriptRoot "../lib/Atlas.$m.psm1") -DisableNameChecking }
 try {
     $hook = Read-HookInput
-    $path = if ($hook.tool_input -is [hashtable]) { $hook.tool_input['file_path'] } else { $null }
+    $path = Get-HookFilePath $hook
     if (-not $path) { exit 0 }
     $rel = ConvertTo-RepoPath $path
     if (-not $rel) { exit 0 }

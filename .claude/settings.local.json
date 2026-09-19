@@ -18,7 +18,13 @@
       "Bash(mkdir -p skills/atlas-report)",
       "Bash(lsof -iTCP:4848 -sTCP:LISTEN)",
       "Bash(/opt/homebrew/bin/python3 -c \"import tree_sitter_language_pack\")",
-      "Bash(pwsh -NoProfile -Command ' *)"
+      "Bash(pwsh -NoProfile -Command ' *)",
+      "WebFetch(domain:code.visualstudio.com)",
+      "Bash(./.venv/bin/python -c \"import ast;ast.parse\\(open\\('day-1.py'\\).read\\(\\)\\)\")",
+      "Bash(./.venv/bin/python -c \"import ast;ast.parse\\(open\\('day-1.py'\\).read\\(\\)\\);print\\('parses ok'\\)\")",
+      "Bash(pwsh -NoProfile -File .claude/scripts/run-tests.ps1)",
+      "Bash(pwsh -NoProfile -File .claude/scripts/precommit.ps1 -Subject \"Fix mutable default in calculate_percentiles and add day-1 tests\")",
+      "Bash(pwsh -NoProfile -File .claude/scripts/atlas.ps1 unused)"
     ],
     "additionalDirectories": [
       "/Users/saichandvemuri/Downloads/Dsa/python/.claude/engine/atlas_engine",

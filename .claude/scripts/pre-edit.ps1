@@ -11,7 +11,7 @@ foreach ($m in 'Core', 'Git', 'Template', 'Session') { Import-Module (Join-Path 
 function Get-EditedSymbols {
     <# Ids of the symbols an Edit or MultiEdit touches, or an empty list when that cannot be told (Write, text not found, module-level code). #>
     param($Hook, [string]$Rel, [string]$Full)
-    $ti = $Hook.tool_input
+    $ti = if ($Hook.tool_input -is [hashtable]) { $Hook.tool_input } elseif ($Hook.toolInput -is [hashtable]) { $Hook.toolInput } else { @{} }
     $olds = switch ($Hook.tool_name) {
         'Edit' { @($ti['old_string']) }
         'MultiEdit' { @($ti['edits'] | ForEach-Object { $_['old_string'] }) }
@@ -55,7 +55,7 @@ try {
     $gate = $policy.editGate
     if ($gate.mode -eq 'off') { exit 0 }
 
-    $path = if ($hook.tool_input -is [hashtable]) { $hook.tool_input['file_path'] } else { $null }
+    $path = Get-HookFilePath $hook
     if (-not $path) { exit 0 }
     $rel = ConvertTo-RepoPath $path
     if (-not $rel) { exit 0 }

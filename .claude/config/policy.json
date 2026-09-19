@@ -2,16 +2,30 @@
   "$schema": "../schemas/policy.schema.json",
   "schemaVersion": 1,
   "riskThresholds": {
-    "medium":   { "affected": 4,  "flows": 1 },
-    "high":     { "affected": 11, "flows": 2 },
-    "critical": { "affected": 31, "flows": 4 }
+    "medium": {
+      "affected": 4,
+      "flows": 2
+    },
+    "high": {
+      "affected": 11,
+      "flows": 4
+    },
+    "critical": {
+      "affected": 31,
+      "flows": 8
+    }
   },
   "editGate": {
     "mode": "block",
     "blockAt": "CRITICAL",
     "warnAt": "HIGH",
     "cacheMinutes": 20,
-    "skipPaths": [".claude/", ".git/", "docs/", "node_modules/"],
+    "skipPaths": [
+      ".claude/",
+      ".git/",
+      "docs/",
+      "node_modules/"
+    ],
     "skipTests": true
   },
   "commit": {
@@ -19,5 +33,8 @@
     "blockOnRemovedStillReferenced": true,
     "maxSubjectLength": 72
   },
-  "push": { "mode": "warn", "blockAt": "CRITICAL" }
+  "push": {
+    "mode": "warn",
+    "blockAt": "CRITICAL"
+  }
 }

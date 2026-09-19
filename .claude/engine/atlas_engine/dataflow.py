@@ -654,8 +654,7 @@ class World:
                     continue
                 a = child.args
                 params = [x.arg for x in [*a.posonlyargs, *a.args, *a.kwonlyargs]]
-                route = any((dotted(d.func if isinstance(d, ast.Call) else d) or "").rsplit(".", 1)[-1] in ROUTE_DECORATORS
-                            and "." in (dotted(d.func if isinstance(d, ast.Call) else d) or "") for d in child.decorator_list)
+                route = any(_is_route_decorator(dotted(d.func if isinstance(d, ast.Call) else d) or "") for d in child.decorator_list)
                 self.functions.append({"sid": f"{path}::{unique}", "file": path, "name": child.name, "kind": "method" if parent_kind == "class" else "function",
                                        "params": params, "lines": lines, "body": child.body, "line": child.lineno, "route": route})
                 self._walk(child.body, q, "function", path, lines, seen)
@@ -685,6 +684,12 @@ class World:
         fa = FunctionAnalysis(self, fn["sid"], fn["file"], fn["name"], fn["kind"], fn["params"], fn["lines"], fn["body"], fn["line"], fn["route"], record=True)
         fa.run()
         return fa
+
+
+def _is_route_decorator(name: str) -> bool:
+    """`app.route`, `router.get`, `bp.post`, ... and a bare `@route(...)` (bottle-style). A bare `get` or `post` is too common a name to trust."""
+    last = name.rsplit(".", 1)[-1]
+    return last in ROUTE_DECORATORS and ("." in name or last == "route")
 
 
 def _defs_in(node: ast.AST):
