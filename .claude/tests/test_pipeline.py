@@ -207,3 +207,13 @@ def test_changes_ignore_folders_the_index_never_reads(project):
     write(project, {".claude/engine/atlas_engine/tool.py": "def tool():\n    return 1\n", "node_modules/pkg/x.py": "def x():\n    return 1\n", "pkg/new.py": "def fresh():\n    return 1\n"})
     c = Atlas(project).changes()
     assert set(c["files"]) == {"pkg/new.py"}                     # the tool's own files and vendored code are not "your changes"
+
+
+def test_symbols_at_finds_the_innermost_symbol(project):
+    index(project, full=True)
+    a = Atlas(project)
+    inside = a.symbols_at("pkg/shapes.py", 8)                       # a line inside Shape.describe
+    assert [x["id"].split("::")[-1] for x in inside] == ["Shape.describe"]
+    assert a.symbols_at("pkg/shapes.py", 1) == []                   # an import line: module-level code
+    both = {x["id"].split("::")[-1] for x in a.symbols_at("pkg/shapes.py", 5, 8)}
+    assert {"Shape.area", "Shape.describe"} <= both and "Shape" not in both

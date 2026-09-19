@@ -15,7 +15,10 @@
       "Bash(cd /Users/saichandvemuri/Downloads/Dsa/python/.claude/engine/atlas_engine; sed -n '/^def _ignore_patterns/,/^def index_lock/p' indexer.py | head -50)",
       "Bash(cd /Users/saichandvemuri/Downloads/Dsa/python/.claude/tests; grep -n \"def git\\\\|subprocess\\\\|def test_changes\" test_pipeline.py | head; sed -n '/def git\\(/,/^$/p' test_pipeline.py | head -12)",
       "Bash(rm -rf skills/atlas-publish skills/atlas-explore prompts/html-generation-rules.md)",
-      "Bash(mkdir -p skills/atlas-report)"
+      "Bash(mkdir -p skills/atlas-report)",
+      "Bash(lsof -iTCP:4848 -sTCP:LISTEN)",
+      "Bash(/opt/homebrew/bin/python3 -c \"import tree_sitter_language_pack\")",
+      "Bash(pwsh -NoProfile -Command ' *)"
     ],
     "additionalDirectories": [
       "/Users/saichandvemuri/Downloads/Dsa/python/.claude/engine/atlas_engine",

@@ -16,3 +16,7 @@
 ## After each edit
 
 A hook refreshes the graph and may add a line to what you see: "this edit removed X, still used by Y". Act on it now, not at commit time.
+
+## Deleting and renaming
+
+The hooks watch the Edit, Write and MultiEdit tools. Files you delete or move with a shell command are not seen until the next graph refresh, so run `pwsh -NoProfile -File .claude/scripts/atlas.ps1 index` afterwards if you are going to ask the graph about them (the MCP tools and `precommit.ps1` refresh first anyway).

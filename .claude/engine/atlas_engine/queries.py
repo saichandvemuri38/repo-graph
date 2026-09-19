@@ -192,6 +192,13 @@ class Atlas:
     def unused(self, limit: int = 60) -> dict:
         return dynamic.unused(self, limit)
 
+    def symbols_at(self, file: str, start: int, end: int | None = None) -> list[dict]:
+        """The innermost function, method or class symbols that overlap lines start..end of a file (none for module-level code)."""
+        end = end or start
+        rows = [dict(r) for r in self.db.execute(
+            "SELECT id, kind, qname, start, end FROM symbols WHERE file=? AND kind!='module' AND start<=? AND end>=? ORDER BY start", (file, end, start))]
+        return [r for r in rows if not any(o is not r and o["start"] >= r["start"] and o["end"] <= r["end"] and (o["start"], o["end"]) != (r["start"], r["end"]) for o in rows)]
+
     # ------------------------------------------------------------------ context
 
     def _edges_into(self, sid: str, types=DEP_TYPES):

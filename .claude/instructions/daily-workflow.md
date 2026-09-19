@@ -8,7 +8,7 @@ One task at a time. A task is one change the user wants: a bug fix, a feature, a
 | Understand | `atlas_search`, `atlas_context`, `atlas_flows`, read source | nothing |
 | Plan | tell the user; `work.ps1 note` for decisions | nothing |
 | Edit | `atlas_impact` first, then small edits | gate check before, graph refresh + journal after |
-| Verify | run tests; `work.ps1 test` | nothing |
+| Verify | `run-tests.ps1` | runs the configured tests, records the result |
 | Commit | `precommit.ps1`, then commit if asked | graph refresh, snapshot, commit recorded in the task |
 | Push | push if asked | graph refresh, snapshot, risk line, push recorded |
 | Finish | `work.ps1 finish` | summary and PR description written, task archived |
@@ -28,6 +28,7 @@ No task is needed for reading and explaining. Use the graph, answer, and stop. S
 ```
 pwsh -NoProfile -File .claude/scripts/work.ps1 start|status|note|confirm|test|finish|list ...
 pwsh -NoProfile -File .claude/scripts/precommit.ps1
+pwsh -NoProfile -File .claude/scripts/run-tests.ps1
 pwsh -NoProfile -File .claude/scripts/atlas.ps1 <engine command>     # for example: impact Foo.bar, taint, unused, web --open
 pwsh -NoProfile -File .claude/scripts/doctor.ps1
 ```

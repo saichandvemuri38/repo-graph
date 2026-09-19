@@ -83,6 +83,14 @@ def cmd_defs(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_at(args: argparse.Namespace) -> int:
+    atlas = _atlas(args, refresh=False)
+    found = atlas.symbols_at(args.file, args.start, args.end)
+    _emit(args, {"file": args.file, "start": args.start, "end": args.end or args.start, "symbols": found},
+          "\n".join(f"{x['id']}  (lines {x['start']}-{x['end']})" for x in found) or "No function, method or class covers those lines.")
+    return 0
+
+
 def cmd_unused(args: argparse.Namespace) -> int:
     atlas = _atlas(args)
     result = atlas.unused(args.limit)
@@ -232,6 +240,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("symbol")
     s.add_argument("variable")
     s.set_defaults(fn=cmd_defs)
+
+    s = sub.add_parser("at", parents=[js], help="which function, method or class covers lines of a file")
+    s.add_argument("file")
+    s.add_argument("start", type=int)
+    s.add_argument("end", type=int, nargs="?")
+    s.set_defaults(fn=cmd_at)
 
     s = sub.add_parser("unused", parents=[js], help="symbols nothing calls, with signs of hidden (dynamic) use")
     s.add_argument("--limit", type=int, default=60)

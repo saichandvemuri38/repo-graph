@@ -119,9 +119,9 @@ def build_server(root: Path):
         return reports.md_unused(fresh().unused(limit))
 
     @tool()
-    def atlas_taint(target: str = "", include_tests: bool = False) -> str:
+    def atlas_taint(target: str = "", include_tests: bool = False, file: str = "") -> str:
         """Python security data flow: paths from untrusted input (input(), sys.argv, request.args, HTTP handler parameters, environment) to dangerous calls (os.system, eval, cursor.execute, open, pickle.loads ...), across function calls, with each step and a fix. target limits it to a file or symbol. Leads to verify, not proof: it is not path-sensitive."""
-        return reports.md_taint(fresh().taint(target, include_tests))
+        return reports.md_taint(fresh().taint(target or file, include_tests))
 
     @tool()
     def atlas_defs(symbol: str, variable: str) -> str:

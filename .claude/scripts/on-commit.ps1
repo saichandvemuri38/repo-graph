@@ -4,7 +4,7 @@
     on-commit.ps1 <hook name> [git's own arguments]
   Refreshes the graph, records the commit in the active task, and adds a line to the graph snapshots. Never fails git.
 #>
-param([Parameter(Position = 0)][string]$Hook = 'post-commit')
+param([Parameter(Position = 0)][string]$Hook = 'post-commit', [Parameter(ValueFromRemainingArguments)][string[]]$GitArgs)   # git adds its own arguments (post-checkout: 3, post-merge: 1, post-rewrite: 1)
 foreach ($m in 'Core', 'Git', 'Template', 'Session') { Import-Module (Join-Path $PSScriptRoot "../lib/Atlas.$m.psm1") -DisableNameChecking }
 try {
     if ((Get-AtlasConfig).graph.refreshOnCommit) { [void](Update-Graph) }

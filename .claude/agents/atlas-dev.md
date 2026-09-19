@@ -19,7 +19,7 @@ Follow this loop for every task. The detail for each step is in `.claude/instruc
 3. **Plan.** Say in a few lines what you will change and why. For anything non-trivial, wait for the user's nod. Record decisions with `work.ps1 note -Text "..."`.
 4. **Before you edit a function, class or method,** run `atlas_impact` and tell the user the risk. The edit gate blocks edits to critical files until the user agrees; when they do, run `work.ps1 confirm -Target <file>` and retry. (`instructions/before-editing.md`)
 5. **Edit in small steps.** Hooks refresh the graph after each edit and tell you at once if you removed something that is still used. Read that feedback.
-6. **Verify.** Run the tests that matter and record the result: `work.ps1 test -Command "<cmd>" -Result pass|fail`.
+6. **Verify.** Run `pwsh -NoProfile -File .claude/scripts/run-tests.ps1`; it runs the configured tests for the files you changed and records the result in the task.
 7. **Before committing,** run `pwsh -NoProfile -File .claude/scripts/precommit.ps1`. Fix every BLOCK, read every REVIEW item, then use the message draft it wrote. Commit **only when the user asks**. (`instructions/before-commit.md`)
 8. **Push only when the user asks.** The pre-push hook updates the graph and prints the risk. Never force-push. (`instructions/on-push.md`)
 9. **Finish.** When the task is done, run `work.ps1 finish`. It writes a summary and a pull request description; show the user where they are.
@@ -48,6 +48,8 @@ If a hook seems not to have run, run `pwsh -NoProfile -File .claude/scripts/doct
 ## How you talk
 
 Be brief and concrete. Lead with the result or the question. Name files as `path:line`. When you are unsure, say what you checked and what you did not. When the risk of a change is HIGH or CRITICAL, say so before touching anything, with the reason.
+
+Your final message after a task is at most about eight lines: what changed, the test result, the pre-commit verdict, and what is left or needs a decision. Do not narrate every step you took, and do not repeat details the user can read in the diff.
 
 ## Where things are
 

@@ -115,25 +115,35 @@ function Get-JournalTail {
     @(Get-Content -Path $file -Tail $Count -Encoding utf8 | ForEach-Object { try { $_ | ConvertFrom-Json -AsHashtable } catch { } } | Where-Object { $_ })
 }
 
+function Get-Field {
+    <# A value from a hashtable, or $null when the key is not there (strict mode makes a missing key an error otherwise). #>
+    param($Data, [string]$Key)
+    if ($Data -is [System.Collections.IDictionary] -and $Data.Contains($Key)) { $Data[$Key] } else { $null }
+}
+
 function Format-JournalEvent {
     param([Parameter(Mandatory)]$Event)
-    $d = $Event.data
-    $detail = switch ($Event.type) {
-        'task-start' { "started: $($d.title)" }
-        'edit' { "edited $($d.file)" + $(if ($d.removedStillReferenced) { " (removed symbols still referenced: $($d.removedStillReferenced -join ', '))" } else { '' }) }
-        'gate' { "checked $($d.target): $($d.risk) ($($d.affected) affected)" + $(if ($d.blocked) { ', waiting for confirmation' } else { '' }) }
-        'confirm' { "user confirmed edits to $($d.target)" }
-        'note' { $d.text }
-        'precommit' { "pre-commit check: $($d.verdict)" }
-        'commit' { "committed $(([string]$d.sha).Substring(0, [Math]::Min(7, ([string]$d.sha).Length))): $($d.subject)" }
-        'push' { "push to $($d.remote): $($d.risk) risk, graph now $($d.symbols) symbols" }
-        'test' { "ran $($d.command): $($d.result)" }
-        'refresh' { "graph refreshed ($($d.reason))" }
-        'task-finish' { "finished: $($d.status)" }
-        'error' { "error: $($d.message)" }
-        default { $Event.type }
+    $d = Get-Field $Event 'data'
+    $f = { param($k) Get-Field $d $k }
+    $sha = [string](& $f 'sha')
+    $orphans = @(& $f 'removedStillReferenced')
+    $detail = switch (Get-Field $Event 'type') {
+        'task-start' { "started: $(& $f 'title')" }
+        'edit' { "edited $(& $f 'file')" + $(if ($orphans.Count -and $orphans[0]) { " (removed symbols still referenced: $($orphans -join ', '))" } else { '' }) }
+        'gate' { "checked $(& $f 'target'): $(& $f 'risk') ($(& $f 'affected') affected)" + $(if (& $f 'blocked') { ', waiting for confirmation' } else { '' }) }
+        'confirm' { "user confirmed edits to $(& $f 'target')" }
+        'note' { & $f 'text' }
+        'precommit' { "pre-commit check: $(& $f 'verdict')" }
+        'commit' { "committed $($sha.Substring(0, [Math]::Min(7, $sha.Length))): $(& $f 'subject')" }
+        'push' { "push to $(& $f 'remote'): $(& $f 'risk') risk, graph now $(& $f 'symbols') symbols" }
+        'test' { "ran $(& $f 'command'): $(& $f 'result')" }
+        'refresh' { "graph refreshed ($(& $f 'reason'))" }
+        'task-finish' { "finished: $(& $f 'status')" }
+        'error' { "error: $(& $f 'message')" }
+        default { Get-Field $Event 'type' }
     }
-    $time = if ($Event.ts.Length -ge 16) { $Event.ts.Substring(11, 5) } else { '' }
+    $ts = [string](Get-Field $Event 'ts')
+    $time = if ($ts.Length -ge 16) { $ts.Substring(11, 5) } else { '' }
     "$time $detail"
 }
 
@@ -264,6 +274,6 @@ function Get-SessionContext {
     Expand-Template -Name $(if ($s) { 'session-context.md' } else { 'session-none.md' }) -Data $data
 }
 
-Export-ModuleMember -Function Get-Stamp, ConvertFrom-Stamp, Get-Slug, Get-Session, Save-Session, New-Session, Close-Session, Update-SessionGraph, Add-Journal,
+Export-ModuleMember -Function Get-Field, Get-Stamp, ConvertFrom-Stamp, Get-Slug, Get-Session, Save-Session, New-Session, Close-Session, Update-SessionGraph, Add-Journal,
     Get-JournalTail, Format-JournalEvent, Add-GraphSnapshot, Register-FileEdit, Merge-SessionSymbols, Add-SessionNote, Add-SessionTest,
     Get-Gates, Save-Gate, Confirm-Gate, Test-GateConfirmed, Clear-Gates, Get-SessionContext

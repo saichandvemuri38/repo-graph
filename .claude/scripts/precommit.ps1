@@ -10,8 +10,6 @@
 param([string]$Subject, [switch]$Json, [switch]$Strict)
 foreach ($m in 'Core', 'Git', 'Template', 'Session') { Import-Module (Join-Path $PSScriptRoot "../lib/Atlas.$m.psm1") -DisableNameChecking }
 
-$ExtLanguage = @{ '.py' = 'python'; '.js' = 'javascript'; '.jsx' = 'javascript'; '.mjs' = 'javascript'; '.cjs' = 'javascript'; '.ts' = 'typescript'; '.tsx' = 'tsx'; '.java' = 'java'; '.go' = 'go' }
-
 function Get-ShortName([string]$Id) { ($Id -split '::', 2)[-1] }
 function Get-StatusWord([string]$Code) { switch ($Code) { 'M' { 'modified' } 'A' { 'added' } 'D' { 'removed' } default { $Code } } }
 
@@ -57,7 +55,7 @@ try {
         }
 
         # tests
-        $languages = @($files | ForEach-Object { $ExtLanguage[[IO.Path]::GetExtension($_).ToLowerInvariant()] } | Where-Object { $_ } | Sort-Object -Unique)
+        $languages = @($files | ForEach-Object { Get-FileLanguage $_ } | Where-Object { $_ } | Sort-Object -Unique)
         $runners = (Read-JsonFile (Join-Path (Get-ClaudeDir) 'config/tests.json')).runners
         $tests = @()
         foreach ($r in $runners) {
@@ -69,7 +67,7 @@ try {
             $lastEdit = ($s.files.Values | ForEach-Object { $_.lastAt } | Sort-Object | Select-Object -Last 1)
             $lastPass = (@($s.tests) | Where-Object { $_.result -eq 'pass' } | ForEach-Object { $_.at } | Sort-Object | Select-Object -Last 1)
             if ($lastEdit -and (-not $lastPass -or $lastPass -lt $lastEdit)) {
-                $warnings.Add('No passing test run is recorded since the last edit. Run the tests, then: work.ps1 test -Command "<command>" -Result pass')
+                $warnings.Add('No passing test run is recorded since the last edit. Run: pwsh -NoProfile -File .claude/scripts/run-tests.ps1')
             }
         }
 

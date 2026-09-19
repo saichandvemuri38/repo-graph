@@ -280,6 +280,11 @@ Describe 'Install and the whole daily loop' -Skip:(-not $script:HaveGit) {
             $r.StdErr | Should -BeNullOrEmpty
             (Read-Json (Join-Path $script:Repo '.claude/atlas/work/gates.json'))['app/util.py'].risk | Should -Be 'LOW'
         }
+        It 'shows edits and checks in the work context (regression: a gate event without "blocked")' {
+            $out = (Invoke-InRepo 'work.ps1' @('status')).StdOut
+            $out | Should -Match 'checked app/util.py: LOW'
+            $out | Should -Match 'Recent activity'
+        }
         It 'ignores tests, new files, other folders and paths outside the repo' {
             foreach ($p in @((Get-HookJson 'Edit' 'tests/test_util.py'), (Get-HookJson 'Write' 'app/brand_new.py'), (Get-HookJson 'Edit' 'docs/readme.md'),
                     (@{ tool_input = @{ file_path = (Join-Path ([IO.Path]::GetTempPath()) 'elsewhere.py') } } | ConvertTo-Json -Compress), '{}', 'not json')) {
@@ -302,6 +307,29 @@ Describe 'Install and the whole daily loop' -Skip:(-not $script:HaveGit) {
                 $allowed = Invoke-InRepo 'pre-edit.ps1' -StdIn (Get-HookJson 'Edit' 'app/util.py')
                 $allowed.ExitCode | Should -Be 0
                 $allowed.StdOut | Should -Match 'additionalContext'
+            }
+            finally { Set-Content $policyPath $original }
+        }
+        It 'gates the symbol being edited, not the whole file' {
+            $policyPath = Join-Path $script:Repo '.claude/config/policy.json'
+            $original = Get-Content -Raw $policyPath
+            try {
+                $p = $original | ConvertFrom-Json -AsHashtable
+                $p.riskThresholds = @{ medium = @{ affected = 1; flows = 9 }; high = @{ affected = 1; flows = 9 }; critical = @{ affected = 1; flows = 9 } }
+                $p | ConvertTo-Json -Depth 10 | Set-Content $policyPath
+                Remove-Item (Join-Path $script:Repo '.claude/atlas/work/gates.json') -ErrorAction SilentlyContinue
+                function Edit-Json($old) { @{ tool_name = 'Edit'; tool_input = @{ file_path = (Join-Path $script:Repo 'app/util.py'); old_string = $old; new_string = 'x' } } | ConvertTo-Json -Compress }
+                # unused_helper has nothing depending on it: allowed, although clamp in the same file is critical
+                $quiet = Invoke-InRepo 'pre-edit.ps1' -StdIn (Edit-Json 'return 1')
+                $quiet.ExitCode | Should -Be 0
+                $blocked = Invoke-InRepo 'pre-edit.ps1' -StdIn (Edit-Json 'return max(lo, min(x, hi))')
+                $blocked.ExitCode | Should -Be 2
+                $blocked.StdErr | Should -Match 'clamp'
+                $gates = Read-Json (Join-Path $script:Repo '.claude/atlas/work/gates.json')
+                $gates['app/util.py::unused_helper'].risk | Should -Be 'LOW'
+                $gates['app/util.py::clamp'].risk | Should -Be 'CRITICAL'
+                # text that is not in the file falls back to checking the whole file
+                (Invoke-InRepo 'pre-edit.ps1' -StdIn (Edit-Json 'no such text')).ExitCode | Should -Be 2
             }
             finally { Set-Content $policyPath $original }
         }
@@ -350,6 +378,61 @@ Describe 'Install and the whole daily loop' -Skip:(-not $script:HaveGit) {
             $draft = Get-Content -Raw (Join-Path $script:Repo '.claude/atlas/work/commit-draft.txt')
             $draft | Should -Match '^Validate clamp bounds'
             $draft | Should -Match 'app/util.py: modified clamp'
+        }
+        It 'runs the configured tests, records the result, and fails when a runner fails' {
+            $cfgPath = Join-Path $script:Repo '.claude/config/tests.json'
+            $original = Get-Content -Raw $cfgPath
+            try {
+                @{ schemaVersion = 1; runners = @(@{ name = 'echo'; languages = @('python'); detect = @('app'); command = 'Write-Output tests-ran' }) } | ConvertTo-Json -Depth 5 | Set-Content $cfgPath
+                $ok = Invoke-InRepo 'run-tests.ps1'
+                $ok.ExitCode | Should -Be 0
+                $ok.StdOut | Should -Match '== echo: Write-Output tests-ran => pass'
+                $ok.StdOut | Should -Match 'tests-ran'
+                $s = Read-Json (Join-Path $script:Repo '.claude/atlas/work/current.json')
+                ($s.tests | Select-Object -Last 1).result | Should -Be 'pass'
+                @{ schemaVersion = 1; runners = @(@{ name = 'broken'; languages = @('python'); detect = @('app'); command = 'exit 3' }) } | ConvertTo-Json -Depth 5 | Set-Content $cfgPath
+                $bad = Invoke-InRepo 'run-tests.ps1'
+                $bad.ExitCode | Should -Be 1
+                $bad.StdOut | Should -Match '=> fail'
+                (Read-Json (Join-Path $script:Repo '.claude/atlas/work/current.json')).tests | Select-Object -Last 1 | ForEach-Object { $_.result | Should -Be 'fail' }
+                (Invoke-InRepo 'run-tests.ps1' @('-Runner', 'nothing')).StdOut | Should -Match 'No test runner applies'
+            }
+            finally { Set-Content $cfgPath $original }
+            (Invoke-InRepo 'work.ps1' @('test', '-Command', 'python -m pytest -q', '-Result', 'pass')).ExitCode | Should -Be 0     # leave a passing run for the checks below
+        }
+        It 'finds test files in the repo root and prefers the Maven wrapper over plain Maven' {
+            $cfgPath = Join-Path $script:Repo '.claude/config/tests.json'
+            $original = Get-Content -Raw $cfgPath
+            try {
+                Write-File 'test_rootlevel.py' "def test_x():`n    assert True`n"
+                Write-File 'mvnw' "#!/bin/sh`n"
+                Write-File 'pom.xml' "<project/>`n"
+                @{ schemaVersion = 1; runners = @(
+                        @{ name = 'py'; languages = @('python'); detect = @('test_*.py'); command = 'Write-Output py-ran' },
+                        @{ name = 'wrapper'; languages = @('java'); detect = @('mvnw'); command = 'Write-Output wrapper-ran' },
+                        @{ name = 'plain'; languages = @('java'); detect = @('pom.xml'); unless = @('mvnw'); command = 'Write-Output plain-ran' }) } | ConvertTo-Json -Depth 6 | Set-Content $cfgPath
+                $out = (Invoke-InRepo 'run-tests.ps1' @('-All')).StdOut
+                $out | Should -Match 'py-ran'
+                $out | Should -Match 'wrapper-ran'
+                $out | Should -Not -Match 'plain-ran'
+                @{ schemaVersion = 1; runners = @(@{ name = 'py'; languages = @('python'); detect = @('nothing_like_this_*.py'); command = 'x' }) } | ConvertTo-Json -Depth 6 | Set-Content $cfgPath
+                (Invoke-InRepo 'run-tests.ps1' @('-All')).StdOut | Should -Match 'No test runner applies\..*Configured: py'
+            }
+            finally { Set-Content $cfgPath $original; Remove-Item (Join-Path $script:Repo 'test_rootlevel.py'), (Join-Path $script:Repo 'mvnw'), (Join-Path $script:Repo 'pom.xml') -ErrorAction SilentlyContinue }
+        }
+        It 'copes with git hooks that pass their own arguments, and with a config from an older version' {
+            $r = Invoke-InRepo 'on-commit.ps1' @('post-checkout', '1111111111111111111111111111111111111111', '2222222222222222222222222222222222222222', '1')
+            $r.ExitCode | Should -Be 0
+            $r.StdErr | Should -BeNullOrEmpty
+            $cfgPath = Join-Path $script:Repo '.claude/config/atlas.json'
+            $original = Get-Content -Raw $cfgPath
+            try {
+                '{"schemaVersion":1}' | Set-Content $cfgPath
+                $d = (Invoke-InRepo 'doctor.ps1' @('-Json')).StdOut | ConvertFrom-Json
+                ($d | Where-Object check -eq 'Config and policy').status | Should -Be 'PASS'
+                (Invoke-InRepo 'work.ps1' @('status')).ExitCode | Should -Be 0
+            }
+            finally { Set-Content $cfgPath $original }
         }
         It 'records a commit made through git (post-commit hook)' {
             (Invoke-Git @('add', 'app/util.py')).Code | Should -Be 0

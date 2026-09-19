@@ -39,6 +39,13 @@ function Test-TestPath {
     $RepoPath -match '(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*$|_test\.(py|go)$|\.(test|spec)\.[jt]sx?$|Tests?\.java$'
 }
 
+$script:ExtLanguage = @{ '.py' = 'python'; '.js' = 'javascript'; '.jsx' = 'javascript'; '.mjs' = 'javascript'; '.cjs' = 'javascript'; '.ts' = 'typescript'; '.tsx' = 'tsx'; '.java' = 'java'; '.go' = 'go' }
+
+function Get-FileLanguage {
+    param([Parameter(Mandatory)][string]$Path)
+    $script:ExtLanguage[[IO.Path]::GetExtension($Path).ToLowerInvariant()]
+}
+
 # ------------------------------------------------------------------------------------------ JSON, config, schemas
 
 function Merge-Hashtable {
@@ -81,6 +88,16 @@ function Write-JsonFile {
     Move-Item -Path $tmp -Destination $Path -Force
 }
 
+# Built-in defaults, so a config file written by an older version (missing newer keys) still works.
+$script:ConfigDefaults = @{
+    engine = @{ path = ''; python = '' }
+    work = @{ dir = '.claude/atlas/work'; journalMaxLines = 5000 }
+    graph = @{ refreshOnSessionStart = $true; refreshOnEdit = $true; refreshOnCommit = $true; refreshOnPush = $true; timeoutSeconds = 120 }
+    context = @{ journalTail = 8; maxFiles = 12 }
+    checks = @{ taintOnEdit = $false; taintOnPrecommit = $true }
+    report = @{ onPush = $true; onFinish = $true; onCommit = $false }
+}
+
 function Get-AtlasConfig {
     <# config/atlas.json overlaid with config/atlas.local.json (machine-specific, not committed). #>
     if ($script:ConfigCache) { return $script:ConfigCache }
@@ -88,7 +105,7 @@ function Get-AtlasConfig {
     $shared = Read-JsonFile (Join-Path $dir 'atlas.json')
     if (-not $shared) { throw "Missing $dir/atlas.json. Run .claude/scripts/install.ps1 again." }
     $local = Read-JsonFile (Join-Path $dir 'atlas.local.json')
-    $merged = if ($local) { Merge-Hashtable $shared $local } else { $shared }
+    $merged = Merge-Hashtable (Merge-Hashtable $script:ConfigDefaults $shared) $(if ($local) { $local } else { @{} })
     $problems = @(Test-AtlasSchema -Json ($merged | ConvertTo-Json -Depth 10) -Schema 'atlas-config')
     if ($problems.Count) { throw "config/atlas*.json is invalid: $($problems -join '; ')" }
     $script:ConfigCache = $merged
@@ -254,6 +271,6 @@ function Test-RiskAtLeast {
     $script:RiskOrder.IndexOf($Level) -ge $script:RiskOrder.IndexOf($Minimum)
 }
 
-Export-ModuleMember -Function Get-AtlasRoot, Get-ClaudeDir, Get-WorkDir, ConvertTo-RepoPath, Test-TestPath, Merge-Hashtable, Read-JsonFile,
+Export-ModuleMember -Function Get-FileLanguage, Get-AtlasRoot, Get-ClaudeDir, Get-WorkDir, ConvertTo-RepoPath, Test-TestPath, Merge-Hashtable, Read-JsonFile,
     Test-AtlasSchema, Write-JsonFile, Get-AtlasConfig, Get-AtlasPolicy, Reset-AtlasCache, Invoke-Process, Get-EnginePath, Get-EnginePython,
     Invoke-Engine, Invoke-EngineJson, Update-Graph, Update-Report, Get-GraphStats, Read-HookInput, Write-HookContext, Write-AtlasLog, Get-RiskLevel, Test-RiskAtLeast
