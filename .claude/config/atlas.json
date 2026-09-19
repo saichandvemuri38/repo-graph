@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/atlas-config.schema.json",
+  "schemaVersion": 1,
+  "engine": {
+    "path": "",
+    "python": ""
+  },
+  "work": {
+    "dir": ".claude/atlas/work",
+    "journalMaxLines": 5000
+  },
+  "graph": {
+    "refreshOnSessionStart": true,
+    "refreshOnEdit": true,
+    "refreshOnCommit": true,
+    "refreshOnPush": true,
+    "timeoutSeconds": 120
+  },
+  "context": {
+    "journalTail": 8,
+    "maxFiles": 12
+  },
+  "checks": {
+    "taintOnEdit": false,
+    "taintOnPrecommit": true
+  },
+  "report": {
+    "onPush": true,
+    "onFinish": true,
+    "onCommit": false
+  }
+}

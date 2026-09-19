@@ -1,6 +1,6 @@
 # Impact Risk Rubric
 
-Used by the impact-analyst and change-detector agents.
+Used by the atlas-dev agent and the engine.
 
 ## Walking the graph (upstream = "who depends on this?")
 
@@ -22,7 +22,7 @@ If asked for downstream ("what does this depend on?"), follow `CALLS` and `REFER
 
 ## Processes
 
-After collecting affected symbols, read `CodeAtlas/graph/processes.md`. List every process that has at least one affected symbol as a step. If that file is missing or stale, say so and continue without it.
+After collecting affected symbols, read `.claude/atlas/graph/processes.md`. List every process that has at least one affected symbol as a step. If that file is missing or stale, say so and continue without it.
 
 ## Risk level
 

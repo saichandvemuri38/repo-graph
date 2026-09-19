@@ -1,5 +1,0 @@
-# Keep the graph about YOUR code. The CodeAtlas engine and its tests live in this folder too,
-# so they are excluded. Delete these lines if you want the engine to index itself.
-atlas_engine/
-tests/
-scripts/

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "A work session (.claude/atlas/work/current.json)",
+  "type": "object",
+  "definitions": {
+    "stats": {
+      "type": "object",
+      "required": ["symbols", "edges", "unresolved"],
+      "properties": { "symbols": { "type": "integer" }, "edges": { "type": "integer" }, "unresolved": { "type": "integer" } }
+    }
+  },
+  "required": ["schemaVersion", "id", "status", "task", "branch", "baseCommit", "startedAt", "graph", "files", "symbols", "commits", "pushes", "tests", "notes"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[0-9]{8}-[0-9]{6}(-[a-z0-9-]+)?$" },
+    "status": { "type": "string", "enum": ["active", "finished", "abandoned"] },
+    "task": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "acceptance": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "branch": { "type": "string" },
+    "baseCommit": { "type": "string" },
+    "startedAt": { "type": "string" },
+    "finishedAt": { "type": "string" },
+    "graph": {
+      "type": "object",
+      "required": ["baseline", "latest"],
+      "properties": { "baseline": { "$ref": "#/definitions/stats" }, "latest": { "$ref": "#/definitions/stats" } }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["edits", "firstAt", "lastAt"],
+        "properties": { "edits": { "type": "integer", "minimum": 1 }, "firstAt": { "type": "string" }, "lastAt": { "type": "string" } }
+      }
+    },
+    "symbols": {
+      "type": "object",
+      "required": ["modified", "added", "removed"],
+      "properties": {
+        "modified": { "type": "array", "items": { "type": "string" } },
+        "added": { "type": "array", "items": { "type": "string" } },
+        "removed": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "commits": {
+      "type": "array",
+      "items": { "type": "object", "required": ["sha", "subject", "at"], "properties": { "sha": { "type": "string" }, "subject": { "type": "string" }, "at": { "type": "string" } } }
+    },
+    "pushes": {
+      "type": "array",
+      "items": { "type": "object", "required": ["at", "remote", "risk"], "properties": { "at": { "type": "string" }, "remote": { "type": "string" }, "risk": { "type": "string" }, "refs": { "type": "array", "items": { "type": "string" } } } }
+    },
+    "tests": {
+      "type": "array",
+      "items": { "type": "object", "required": ["command", "result", "at"], "properties": { "command": { "type": "string" }, "result": { "type": "string", "enum": ["pass", "fail", "skipped"] }, "at": { "type": "string" }, "note": { "type": "string" } } }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "object", "required": ["at", "text"], "properties": { "at": { "type": "string" }, "text": { "type": "string" } } }
+    }
+  },
+  "additionalProperties": false
+}

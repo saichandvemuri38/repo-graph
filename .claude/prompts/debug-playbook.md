@@ -1,6 +1,6 @@
 # Debug Playbook
 
-Used by the bug-tracer agent. The graph tells you where to look. The source tells you what is true. Always confirm with the source.
+Used by the atlas-dev agent (see `.claude/instructions/debugging.md`). The graph tells you where to look. The source tells you what is true. Always confirm with the source.
 
 ## Inputs you may receive
 

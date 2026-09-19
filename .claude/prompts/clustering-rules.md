@@ -1,6 +1,6 @@
 # Clustering and Process Rules
 
-The cluster-mapper agent derives two things from the graph. It has no algorithm library, so it works by reasoning over the graph text. Say plainly in the output that this is an approximation.
+The engine derives two things from the graph. It has no algorithm library, so it works by reasoning over the graph text. Say plainly in the output that this is an approximation.
 
 ## Clusters (functional areas)
 

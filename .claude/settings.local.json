@@ -6,7 +6,20 @@
       "Bash(python3 -c \"import networkx;print\\('networkx present'\\)\")",
       "Bash(python3 -c \"import tree_sitter;print\\('tree_sitter present'\\)\")",
       "Bash(git --version)",
-      "Bash(timeout 8 pip --version)"
+      "Bash(timeout 8 pip --version)",
+      "Bash(../../.venv/bin/python -m pyflakes atlas_engine)",
+      "Bash(../../.venv/bin/python -m compileall -q atlas_engine)",
+      "Bash(../../.venv/bin/python -m pytest -q ../tests)",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(grep -n 'CODEATLAS_ENGINE\\\\|Engine\\\\b\\\\|atlas.local\\\\|CodeAtlas\\\\|projects\\\\|\\\\.html\\\\|$script:Install' tests/pester/AtlasDaily.Tests.ps1)",
+      "Bash(cd /Users/saichandvemuri/Downloads/Dsa/python/.claude/engine/atlas_engine; sed -n '/^def _ignore_patterns/,/^def index_lock/p' indexer.py | head -50)",
+      "Bash(cd /Users/saichandvemuri/Downloads/Dsa/python/.claude/tests; grep -n \"def git\\\\|subprocess\\\\|def test_changes\" test_pipeline.py | head; sed -n '/def git\\(/,/^$/p' test_pipeline.py | head -12)",
+      "Bash(rm -rf skills/atlas-publish skills/atlas-explore prompts/html-generation-rules.md)",
+      "Bash(mkdir -p skills/atlas-report)"
+    ],
+    "additionalDirectories": [
+      "/Users/saichandvemuri/Downloads/Dsa/python/.claude/engine/atlas_engine",
+      "/Users/saichandvemuri/Downloads/Dsa/python/.claude/engine"
     ]
   }
 }

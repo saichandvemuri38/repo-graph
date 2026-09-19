@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "mcp__codeatlas",
+      "Bash(pwsh -NoProfile -File .claude/scripts/atlas.ps1:*)",
+      "Bash(pwsh -NoProfile -File .claude/scripts/work.ps1:*)",
+      "Bash(pwsh -NoProfile -File .claude/scripts/precommit.ps1:*)",
+      "Bash(pwsh -NoProfile -File .claude/scripts/doctor.ps1:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "pwsh", "args": ["-NoProfile", "-File", "${CLAUDE_PROJECT_DIR}/.claude/scripts/session-start.ps1"], "timeout": 120 } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Edit|Write|MultiEdit", "hooks": [ { "type": "command", "command": "pwsh", "args": ["-NoProfile", "-File", "${CLAUDE_PROJECT_DIR}/.claude/scripts/pre-edit.ps1"], "timeout": 60 } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write|MultiEdit", "hooks": [ { "type": "command", "command": "pwsh", "args": ["-NoProfile", "-File", "${CLAUDE_PROJECT_DIR}/.claude/scripts/on-edit.ps1"], "timeout": 120 } ] }
+    ]
+  }
+}

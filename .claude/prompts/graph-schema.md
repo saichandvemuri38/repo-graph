@@ -1,8 +1,8 @@
 # Graph Schema (CodeAtlas) — v1
 
-> **Who writes this format:** the CodeAtlas engine (`atlas_engine/`) exports every graph as these shards on each index, straight from its SQLite database (`CodeAtlas/graph/atlas.db`, the source of truth). The fallback agents (`graph-indexer`, `graph-linker`) write the same format for languages the engine cannot parse. The engine adds one thing the agents may see: `EDGE` lines whose destination is `?name` are unresolved calls, and a `# parse-error:` comment marks a file recovered by a tolerant scan.
+> **Who writes this format:** the CodeAtlas engine (`atlas_engine/`) exports every graph as these shards on each index, straight from its SQLite database (`.claude/atlas/graph/atlas.db`, the source of truth). The fallback agents (`graph-indexer`, `graph-linker`) write the same format for languages the engine cannot parse. The engine adds one thing the agents may see: `EDGE` lines whose destination is `?name` are unresolved calls, and a `# parse-error:` comment marks a file recovered by a tolerant scan.
 
-The code graph is stored as plain text under `CodeAtlas/graph/`. Every record is one line, pipe-delimited, so it can be searched with Grep. This file is the single source of truth for the format. Every agent must follow it exactly.
+The code graph is stored as plain text under `.claude/atlas/graph/`. Every record is one line, pipe-delimited, so it can be searched with Grep. This file is the single source of truth for the format. Every agent must follow it exactly.
 
 ## Identifiers
 
@@ -21,8 +21,8 @@ The code graph is stored as plain text under `CodeAtlas/graph/`. Every record is
 
 ## Shard files
 
-One shard per source file: `CodeAtlas/graph/shards/<relpath with "/" replaced by "__">.graph.md`
-Example: `sorting/quick.py` → `CodeAtlas/graph/shards/sorting__quick.py.graph.md`
+One shard per source file: `.claude/atlas/graph/shards/<relpath with "/" replaced by "__">.graph.md`
+Example: `sorting/quick.py` → `.claude/atlas/graph/shards/sorting__quick.py.graph.md`
 
 A shard contains only comment lines (`# ...`) and these three record types.
 
@@ -55,7 +55,7 @@ EDGE|<TYPE>|<src-id>|<dst-id or ?name or ext:module>|<line>|<confidence>
 - `confidence`: `high`, `med` or `low` (see `resolution-rules.md`).
 - Every symbol must have exactly one `DEFINES` edge from its file or its enclosing class.
 
-## Global files (all in `CodeAtlas/graph/`)
+## Global files (all in `.claude/atlas/graph/`)
 
 `manifest.md` — one line per indexed file:
 ```
@@ -84,7 +84,7 @@ STEP|<process-id>|<order>|<symbol-id>
 
 ## Useful Grep patterns (regex)
 
-| Question | Pattern (search in `CodeAtlas/graph/shards/`) |
+| Question | Pattern (search in `.claude/atlas/graph/shards/`) |
 |---|---|
 | Where is symbol X defined? | `^SYM\|<id>\|` |
 | Who calls X? (callers) | `^EDGE\|CALLS\|[^\|]*\|<id>\|` |

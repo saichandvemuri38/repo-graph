@@ -8,12 +8,11 @@ argument-hint: "[--base <git ref>]"
 
 Arguments: `$ARGUMENTS` (for example `--base origin/main` to review a whole branch).
 
-1. Run `sh scripts/codeatlas.sh changes $ARGUMENTS --save` (or MCP tool `atlas_changes`). The engine compares each symbol's body exactly. With git it compares against `HEAD` (or the ref you pass); without git it compares against the last index. It lists modified, added and removed symbols, their direct dependants, and the flows touched.
+1. Run `pwsh -NoProfile -File .claude/scripts/atlas.ps1 changes $ARGUMENTS` (or MCP tool `atlas_changes`). The engine compares each symbol's body exactly. With git it compares against `HEAD` (or the ref you pass); without git it compares against the last index. It lists modified, added and removed symbols, their direct dependants, and the flows touched.
 2. Reply with:
    - the overall risk and the reason
    - a short table of changed symbols and their direct dependants
    - **removed symbols that are still referenced**. These are the most likely breakages
-   - the path of the saved report
 3. Add judgment: for the top two or three modified symbols, read the diff (`git diff` if there is a repo) and say whether the change alters a signature, return value or side effect that the listed dependants rely on.
 4. If the risk is HIGH or CRITICAL, say which tests or code paths to run before committing.
 

@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodeAtlas policy (config/policy.json)",
+  "type": "object",
+  "definitions": {
+    "level": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    "threshold": {
+      "type": "object",
+      "required": ["affected", "flows"],
+      "properties": { "affected": { "type": "integer", "minimum": 1 }, "flows": { "type": "integer", "minimum": 1 } },
+      "additionalProperties": false
+    }
+  },
+  "required": ["schemaVersion", "riskThresholds", "editGate", "commit", "push"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "riskThresholds": {
+      "type": "object",
+      "required": ["medium", "high", "critical"],
+      "properties": {
+        "medium": { "$ref": "#/definitions/threshold" },
+        "high": { "$ref": "#/definitions/threshold" },
+        "critical": { "$ref": "#/definitions/threshold" }
+      },
+      "additionalProperties": false
+    },
+    "editGate": {
+      "type": "object",
+      "required": ["mode", "blockAt", "warnAt"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["off", "warn", "block"] },
+        "blockAt": { "$ref": "#/definitions/level" },
+        "warnAt": { "$ref": "#/definitions/level" },
+        "cacheMinutes": { "type": "integer", "minimum": 0 },
+        "skipPaths": { "type": "array", "items": { "type": "string" } },
+        "skipTests": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "commit": {
+      "type": "object",
+      "properties": {
+        "requireTask": { "type": "boolean" },
+        "blockOnRemovedStillReferenced": { "type": "boolean" },
+        "maxSubjectLength": { "type": "integer", "minimum": 30, "maximum": 200 }
+      },
+      "additionalProperties": false
+    },
+    "push": {
+      "type": "object",
+      "required": ["mode", "blockAt"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["off", "warn", "block"] },
+        "blockAt": { "$ref": "#/definitions/level" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

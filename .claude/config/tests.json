@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/tests.schema.json",
+  "schemaVersion": 1,
+  "runners": [
+    { "name": "pytest",  "languages": ["python"],                          "detect": ["pytest.ini", "pyproject.toml", "setup.cfg", "tests"], "command": "python -m pytest -q" },
+    { "name": "npm",     "languages": ["javascript", "typescript", "tsx"], "detect": ["package.json"],                                       "command": "npm test --silent" },
+    { "name": "go",      "languages": ["go"],                              "detect": ["go.mod"],                                             "command": "go test ./..." },
+    { "name": "maven",   "languages": ["java"],                            "detect": ["pom.xml"],                                            "command": "mvn -q test" },
+    { "name": "gradle",  "languages": ["java"],                            "detect": ["build.gradle", "build.gradle.kts"],                   "command": "gradle test" }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "One line of .claude/atlas/work/journal.jsonl",
+  "type": "object",
+  "required": ["ts", "session", "type", "data"],
+  "properties": {
+    "ts": { "type": "string" },
+    "session": { "type": "string" },
+    "type": { "type": "string", "enum": ["task-start", "edit", "gate", "confirm", "note", "precommit", "commit", "push", "test", "refresh", "task-finish", "error"] },
+    "data": { "type": "object" }
+  },
+  "additionalProperties": false
+}

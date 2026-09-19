@@ -1,8 +1,13 @@
 {
   "mcpServers": {
     "codeatlas": {
-      "command": "sh",
-      "args": ["scripts/codeatlas.sh", "serve"]
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        ".claude/scripts/atlas.ps1",
+        "serve"
+      ]
     }
   }
 }
