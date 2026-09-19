@@ -1,0 +1,87 @@
+name: CodeAtlas
+
+# Rebuild the code graph on every push and pull request, report what the change touches,
+# and keep the browsable app available as a build artifact.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeatlas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # history is needed to diff against the previous commit or the PR base
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install CodeAtlas
+        run: pip install ".[all]"
+
+      - name: Run the engine tests
+        run: |
+          pip install pytest
+          python -m pytest -q
+
+      - name: Build the graph
+        run: python -m atlas_engine index --full
+
+      - name: What did this change touch?
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          BASE="${PR_BASE:-$PUSH_BEFORE}"
+          case "$BASE" in ""|0000000000000000000000000000000000000000) BASE="HEAD~1" ;; esac
+          git rev-parse --verify "$BASE" >/dev/null 2>&1 || BASE="HEAD"
+          {
+            echo "## CodeAtlas impact"
+            python -m atlas_engine changes --base "$BASE" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+          python -m atlas_engine check --base "$BASE" --fail-on none
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codeatlas-app
+          path: |
+            CodeAtlas/*.html
+            CodeAtlas/assets/
+            CodeAtlas/reports/
+            CodeAtlas/graph/*.md
+            CodeAtlas/graph/shards/
+          if-no-files-found: error
+
+  # Optional: publish the app to GitHub Pages. Off by default because Pages sites are public
+  # unless your plan restricts them, and the app lists your symbols and call structure.
+  # Enable it with the repository variable CODEATLAS_PAGES=true and Pages source "GitHub Actions".
+  pages:
+    needs: index
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && vars.CODEATLAS_PAGES == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: codeatlas-app
+          path: site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4

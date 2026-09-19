@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeatlas"
+version = "0.1.0"
+description = "Code knowledge graph for AI agents: parse, link, cluster, query (CLI + MCP server)."
+requires-python = ">=3.10"
+# The Python parser, SQLite store, indexer, queries and HTML export need nothing but the standard library.
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.2"]                        # MCP server for Claude Code and other agents
+graph = ["networkx>=3.0"]                 # Louvain community detection for clusters
+langs = ["tree-sitter-language-pack>=0.10"]  # JavaScript, TypeScript, Java, Go parsing
+all = ["mcp>=1.2", "networkx>=3.0", "tree-sitter-language-pack>=0.10"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+codeatlas = "atlas_engine.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["atlas_engine*"]
+
+[tool.setuptools.package-data]
+atlas_engine = ["web/*", "web/js/*", "web/vendor/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Write(/CodeAtlas/**)",
+      "Edit(/CodeAtlas/**)",
+      "mcp__codeatlas",
+      "Bash(sh scripts/codeatlas.sh:*)",
+      "Bash(sh scripts/reindex.sh)",
+      "Bash(shasum:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git rev-parse:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/reindex.sh\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/reindex.sh\"" }
+        ]
+      }
+    ]
+  }
+}

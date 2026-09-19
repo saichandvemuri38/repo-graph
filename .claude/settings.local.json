@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sqlite3;print\\('sqlite',sqlite3.sqlite_version\\); c=sqlite3.connect\\(':memory:'\\); c.execute\\('create virtual table t using fts5\\(a\\)'\\); print\\('fts5 ok'\\)\")",
+      "Bash(python3 -c \"import mcp;print\\('mcp present'\\)\")",
+      "Bash(python3 -c \"import networkx;print\\('networkx present'\\)\")",
+      "Bash(python3 -c \"import tree_sitter;print\\('tree_sitter present'\\)\")",
+      "Bash(git --version)",
+      "Bash(timeout 8 pip --version)"
+    ]
+  }
+}

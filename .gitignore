@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# CodeAtlas: generated on every index, never committed (rebuilt by hooks, CI and the MCP server)
+CodeAtlas/graph/atlas.db*
+CodeAtlas/graph/.index.lock
+CodeAtlas/graph/shards/*.graph.md
+CodeAtlas/graph/manifest.md
+CodeAtlas/graph/meta.md
+CodeAtlas/graph/unresolved.md
+CodeAtlas/graph/clusters.md
+CodeAtlas/graph/processes.md
+CodeAtlas/reports/*.html
+CodeAtlas/*.html
+CodeAtlas/graph/.index.log
